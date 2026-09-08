@@ -20,22 +20,19 @@
 package io.github.ericmedvet.jviz.core.geometry;
 
 import io.github.ericmedvet.jnb.datastructure.DoubleRange;
-import io.github.ericmedvet.jviz.core.geometry.EntitiesDrawer.Configuration;
 import java.util.ArrayList;
-import java.util.HashSet;
+import java.util.HashMap;
 import java.util.List;
-import java.util.Random;
+import java.util.Map;
 import java.util.Set;
-import java.util.random.RandomGenerator;
 import java.util.stream.Collectors;
-import java.util.stream.IntStream;
 
 public class GeometryUtils {
 
   private GeometryUtils() {
   }
 
-  public static Set<Polygon> voronoiTessellation(
+  public static Map<Point, Polygon> voronoiTessellation(
       Set<Point> points,
       DoubleRange xRange,
       DoubleRange yRange
@@ -46,13 +43,13 @@ public class GeometryUtils {
             Collectors.toSet()
         );
     if (points.isEmpty()) {
-      return Set.of();
+      return Map.of();
     }
     Rectangle domain = Rectangle.of(
         new Point(xRange.min(), yRange.min()),
         new Point(xRange.max(), yRange.max())
     );
-    Set<Polygon> cells = new HashSet<>();
+    Map<Point, Polygon> cells = new HashMap<>();
     for (Point p : points) {
       Polygon cell = domain;
       for (Point q : points) {
@@ -62,7 +59,7 @@ public class GeometryUtils {
         cell = clipPolygon(cell, new Segment(p, q).perpendicularBisector());
       }
       if (!cell.vertexes().isEmpty()) {
-        cells.add(cell);
+        cells.put(p, cell);
       }
     }
     return cells;
@@ -95,24 +92,4 @@ public class GeometryUtils {
     return new Point(p1.x() + t * dx, p1.y() + t * dy);
   }
 
-  public static void main(String[] args) {
-    DoubleRange xR = new DoubleRange(-0.4, 0.4);
-    DoubleRange yR = new DoubleRange(-0.3, 0.35);
-    RandomGenerator rg = new Random(3);
-    List<Entity> entities = new ArrayList<>();
-    entities.add(new Rectangle(Point.ORIGIN, 2, 1));
-    entities.add(new Rectangle(Point.ORIGIN, 1, 0.75));
-    Set<Point> points = IntStream.range(0, 20)
-        .mapToObj(
-            _ -> new Point(
-                xR.extend(1).denormalize(rg.nextDouble()),
-                yR.denormalize(rg.nextDouble())
-            )
-
-        )
-        .collect(Collectors.toSet());
-    entities.addAll(points);
-    entities.addAll(voronoiTessellation(points, xR, yR));
-    new EntitiesDrawer(Configuration.DEFAULT).show(entities);
-  }
 }
