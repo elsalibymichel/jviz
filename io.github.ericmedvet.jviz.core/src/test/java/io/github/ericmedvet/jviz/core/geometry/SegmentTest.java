@@ -37,6 +37,7 @@ package io.github.ericmedvet.jviz.core.geometry;
 
 import static org.assertj.core.api.Assertions.*;
 
+import java.util.Random;
 import org.junit.jupiter.api.Test;
 
 class SegmentTest {
@@ -85,6 +86,57 @@ class SegmentTest {
         .isEmpty();
     assertThat(new Segment(P28, P37).intersectionWith(new Segment(P01, P99)))
         .as("%s->%s does not intersect %s->%s", P37, P28, P01, P99)
+        .isEmpty();
+  }
+
+  @Test
+  void intersectionWithAxisAlignedSegmentAwayFromOrigin() {
+    // A vertical or horizontal segment has a zero-width bounding box: the crossing point, computed with floating
+    // point arithmetic, must be accepted when it is on the segment up to rounding, wherever the segment is.
+    Random random = new Random(1);
+    for (double offset : new double[]{0, 1, 25, 47.3, 50, 60}) {
+      int misses = 0;
+      for (int i = 0; i < 2000; i++) {
+        double along = 20 + 10 * random.nextDouble(); // coordinate of the crossing along the segment
+        double slope = 6 * (random.nextDouble() - 0.5);
+        double distance = random.nextDouble();
+        double step = distance + 0.001 + random.nextDouble(); // the move ends beyond the segment
+        Segment vertical = new Segment(new Point(offset, along - 2.5), new Point(offset, along + 2.5));
+        Segment horizontal = new Segment(new Point(along - 2.5, offset), new Point(along + 2.5, offset));
+        double sign = random.nextBoolean() ? 1 : -1; // from which side the move arrives
+        Segment towardsVertical = new Segment(
+            new Point(offset - sign * distance, along - slope * distance),
+            new Point(offset - sign * distance + sign * step, along - slope * distance + slope * step)
+        );
+        Segment towardsHorizontal = new Segment(
+            new Point(along - slope * distance, offset - sign * distance),
+            new Point(along - slope * distance + slope * step, offset - sign * distance + sign * step)
+        );
+        if (towardsVertical.intersectionWith(vertical).isEmpty()) {
+          misses++;
+        }
+        if (towardsHorizontal.intersectionWith(horizontal).isEmpty()) {
+          misses++;
+        }
+      }
+      assertThat(misses)
+          .as("moves crossing an axis-aligned segment at offset %s that are not detected", offset)
+          .isZero();
+    }
+  }
+
+  @Test
+  void intersectionWithEndpointsAndParallel() {
+    Point P00 = Point.ORIGIN;
+    Point P11 = new Point(1, 1);
+    assertThat(new Segment(P00, P11).intersectionWith(new Segment(P11, new Point(2, 0))))
+        .as("segments sharing an endpoint intersect at that endpoint")
+        .contains(P11);
+    assertThat(new Segment(P00, P11).intersectionWith(new Segment(new Point(0, 1), new Point(1, 2))))
+        .as("parallel segments do not intersect")
+        .isEmpty();
+    assertThat(new Segment(P00, new Point(2, 2)).intersectionWith(new Segment(P11, new Point(3, 3))))
+        .as("overlapping collinear segments have no single intersection point")
         .isEmpty();
   }
 

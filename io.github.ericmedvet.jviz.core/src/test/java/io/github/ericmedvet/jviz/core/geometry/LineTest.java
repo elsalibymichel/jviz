@@ -37,6 +37,7 @@ package io.github.ericmedvet.jviz.core.geometry;
 
 import static org.assertj.core.api.Assertions.*;
 
+import java.util.Random;
 import org.junit.jupiter.api.Test;
 
 class LineTest {
@@ -117,6 +118,39 @@ class LineTest {
     )
         .as("y=x+1 does not intersects (1;0)->(1;-3)")
         .isEmpty();
+  }
+
+  @Test
+  void intersectionWithAxisAlignedSegmentAwayFromOrigin() {
+    // a vertical or horizontal segment has a bounding box with no width or no height: a line that crosses the segment
+    // must be found wherever the segment is
+    Random random = new Random(1);
+    for (double offset : new double[]{0, 1, 25, 47.3, 50, 60}) {
+      int misses = 0;
+      for (int i = 0; i < 2000; i++) {
+        double along = 20 + 10 * random.nextDouble();
+        double direction = 2.5 * (random.nextDouble() - 0.5);
+        Point verticalCenter = new Point(offset, along);
+        Segment vertical = new Segment(new Point(offset, along - 2.5), new Point(offset, along + 2.5));
+        if (Line.from(verticalCenter, direction)
+            .intersectionWith(vertical)
+            .filter(p -> p.distanceTo(verticalCenter) < 1e-9)
+            .isEmpty()) {
+          misses++;
+        }
+        Point horizontalCenter = new Point(along, offset);
+        Segment horizontal = new Segment(new Point(along - 2.5, offset), new Point(along + 2.5, offset));
+        if (Line.from(horizontalCenter, Math.PI / 2d + direction)
+            .intersectionWith(horizontal)
+            .filter(p -> p.distanceTo(horizontalCenter) < 1e-9)
+            .isEmpty()) {
+          misses++;
+        }
+      }
+      assertThat(misses)
+          .as("lines crossing an axis-aligned segment at offset %s that are not found", offset)
+          .isZero();
+    }
   }
 
   @Test

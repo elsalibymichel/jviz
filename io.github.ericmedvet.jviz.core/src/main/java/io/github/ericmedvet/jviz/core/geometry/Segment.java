@@ -38,15 +38,24 @@ public record Segment(Point p1, Point p2) implements BoundedEntity {
   }
 
   public Optional<Point> intersectionWith(Segment other) {
-    Optional<Point> oP = Line.from(this).intersectionWith(other);
-    if (oP.isEmpty()) {
-      return oP;
-    }
-    Point p = oP.orElseThrow();
-    if (!boundingBox().contains(p)) {
+    // this.p1 + t * r = other.p1 + u * s, with t and u in [0, 1] iff the segments intersect
+    double rX = p2.x() - p1.x();
+    double rY = p2.y() - p1.y();
+    double sX = other.p2.x() - other.p1.x();
+    double sY = other.p2.y() - other.p1.y();
+    double denominator = rX * sY - rY * sX;
+    if (denominator == 0) {
+      // parallel (or collinear)
       return Optional.empty();
     }
-    return oP;
+    double qpX = other.p1.x() - p1.x();
+    double qpY = other.p1.y() - p1.y();
+    double t = (qpX * sY - qpY * sX) / denominator;
+    double u = (qpX * rY - qpY * rX) / denominator;
+    if (t < 0 || t > 1 || u < 0 || u > 1) {
+      return Optional.empty();
+    }
+    return Optional.of(new Point(p1.x() + t * rX, p1.y() + t * rY));
   }
 
   public boolean intersects(Segment other) {

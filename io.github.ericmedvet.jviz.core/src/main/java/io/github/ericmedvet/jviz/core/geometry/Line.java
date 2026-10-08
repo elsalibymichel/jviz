@@ -70,15 +70,20 @@ public record Line(double a, double b, double c) implements Entity {
   }
 
   public Optional<Point> intersectionWith(Segment segment) {
-    Optional<Point> oP = intersectionWith(from(segment));
-    if (oP.isEmpty()) {
-      return oP;
-    }
-    Point p = oP.orElseThrow();
-    if (!segment.boundingBox().contains(p)) {
+    // signed values of the line equation at the two ends: the segment crosses the line iff they have opposite signs
+    double v1 = a * segment.p1().x() + b * segment.p1().y() + c;
+    double v2 = a * segment.p2().x() + b * segment.p2().y() + c;
+    if (v1 == v2 || (v1 > 0 && v2 > 0) || (v1 < 0 && v2 < 0)) {
+      // parallel (or the segment lies on the line), or the segment is entirely on one side of the line
       return Optional.empty();
     }
-    return oP;
+    double t = v1 / (v1 - v2);
+    return Optional.of(
+        new Point(
+            segment.p1().x() + t * (segment.p2().x() - segment.p1().x()),
+            segment.p1().y() + t * (segment.p2().y() - segment.p1().y())
+        )
+    );
   }
 
   public Optional<Point> intersectionWith(Semiline semiline) {
